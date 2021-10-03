@@ -38,7 +38,7 @@ public class Sender {
             }
             // if yes, invert, else, go on.
 
-        //Calculate RSA then AES
+        //Calculate RSA then AES (this should be a call from keygen class i think?)
     }
 
 }
