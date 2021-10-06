@@ -45,6 +45,19 @@ public class Sender {
                 e.printStackTrace();
             } // this DOES in fact create the file, but adds nothing to it
 
+            try{
+                FileWriter ddWrite = new FileWriter("message.dd");
+                ddWrite.write("Test writing. Must output SHA.");
+                ddWrite.close();
+
+                System.out.println("File write successful.");
+
+            } catch (Exception e){
+
+                System.err.println("Error. File does not exist.");
+                e.printStackTrace();
+            }
+
 
             // since this is asking for a path and file name, this WILL vary
             // this also assumes M is a text file, so watch out
