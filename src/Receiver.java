@@ -1,8 +1,23 @@
 import java.io.*;
+import java.math.BigInteger;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.spec.RSAPrivateKeySpec;
 import java.util.*;
+import java.security.*;
+import javax.crypto.*;
+import javax.crypto.spec.SecretKeySpec;
+
 public class Receiver {
-    public static void main(String [] args) throws FileNotFoundException {
+    public static void main(String [] args) throws Exception {
         Scanner scan = new Scanner(System.in);
+
+        BufferedReader xPub = new BufferedReader(new FileReader("XPublic.key"));
+        BigInteger xPubMod = new BigInteger(xPub.readLine());
+        BigInteger xPubExponent = new BigInteger (xPub.readLine());
+        BufferedReader symmetric = new BufferedReader(new FileReader("symmetric.key"));
+
+        String symmetricString = symmetric.readLine();
+        byte[] symmetricByte = hexToByte(symmetricString);
 
         String fileName;
         System.out.println("Please enter name of the message file");
@@ -37,4 +52,44 @@ public class Receiver {
 
     // Read message M piece by piece; calculate SHA256 of all of M; output to console in hexadecimal bytes
     // Compare with SHA256 digital digest; return if true or not
+
+
+
+    public static byte[] AESdecrypt (byte [] symmetricKey, byte[] message) throws Exception{
+
+        SecretKey key = new SecretKeySpec(symmetricKey, "AES");
+
+        Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
+
+        cipher.init(cipher.DECRYPT_MODE, key);
+
+
+
+        return cipher.doFinal(message);
+    }
+
+    public static byte[] RSAdecrypt (String message, BigInteger exponent, BigInteger n) throws Exception{
+
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        RSAPrivateKeySpec pubKeySpec = new RSAPrivateKeySpec(n, exponent);
+        RSAPrivateKey key = (RSAPrivateKey) keyFactory.generatePublic(pubKeySpec);
+
+        Cipher cipher = Cipher.getInstance("RSA/ECB/NoPadding");
+        cipher.init(Cipher.DECRYPT_MODE, key);
+        return null;
+    }
+
+    public static byte[] hexToByte(String hexString) {
+        byte[] val = new byte[hexString.length() / 2];
+
+        for (int i = 0; i < val.length; i++) {
+            int index = i * 2;
+            int j = Integer.parseInt(hexString.substring(index, index + 2), 16);
+            val[i] = (byte) j;
+        }
+        return val;
+    }
+
+
+
 }
