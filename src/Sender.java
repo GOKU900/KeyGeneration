@@ -57,7 +57,7 @@ public class Sender {
 
 
         File M = new File(messageFileString);
-        //probably need to use BufferredInputStream here
+        //probably need to use BufferedInputStream here
         Scanner mReader = new Scanner(M);
 
         while (mReader.hasNextLine()){
@@ -147,20 +147,18 @@ public class Sender {
         return new String(md.digest());
     } // This is used to convert message to SHA256
 
-    public static String toHex(byte[] hash){
+    public static byte[] hexToByte(String hexString){
 
-        BigInteger integer = new BigInteger(1,hash);
+        byte [] hexValue = new byte[hexString.length() /2];
 
-        StringBuilder hexString = new StringBuilder(integer.toString(16));
+        for (int i =0; i < hexValue.length / 2; i++){
+            int index = i*2;
 
-        while (hexString.length() < 32){
-
-            hexString.insert(0, '0');
+            int j = Integer.parseInt(hexString.substring(index, index + 2), 16);
+            hexValue[i] = (byte) j;
         }
 
-        // add invert first byte portion
-
-        return hexString.toString();
+        return hexValue;
     }
 
     static int gcd (){
