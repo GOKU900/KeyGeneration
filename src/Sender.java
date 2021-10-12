@@ -42,7 +42,7 @@ public class Sender {
 
         Scanner scan = new Scanner(System.in);
         String messageFileString;
-        //String otherInput ;
+        String otherInput ;
 
         System.out.print("Input the name of the message file: ");
         messageFileString = scan.nextLine();
@@ -56,85 +56,72 @@ public class Sender {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        // basically says name of the file we need to grab
-
         File M = new File(messageFileString);
         //probably need to use BufferredInputStream here
         Scanner mReader = new Scanner(M);
 
-            while (mReader.hasNextLine()){
+        while (mReader.hasNextLine()){
 
-                String data = mReader.nextLine();
-                System.out.println(data);
+            String data = mReader.nextLine();
+            System.out.println(data);
 
-                // Not sure if this should be a char or not yet. LAN: I think this is a byte array not a char array
-                // Will have to read piece by piece.
+            // Not sure if this should be a char or not yet. LAN: I think this is a byte array not a char array
+            // Will have to read piece by piece.
+        }
+
+        try {
+            File messageDD = new File("message.dd");
+            if (messageDD.createNewFile()){
+                System.out.println("File " + messageDD.getName() +" successfully created.");
+            } else {
+                System.out.println("This file already exists!");
             }
+        } catch (Exception e){
 
-            try {
-                File messageDD = new File("message.dd");
-                if (messageDD.createNewFile()){
-                    System.out.println("File " + messageDD.getName() +" successfully created.");
-                } else {
-                    System.out.println("This file already exists!");
-                }
-            } catch (Exception e){
+            System.err.println("Error");
+            e.printStackTrace();
+        } // this DOES in fact create the file, but adds nothing to it
 
-                System.err.println("Error");
-                e.printStackTrace();
-            } // this DOES in fact create the file, but adds nothing to it
+        try{
+            FileWriter ddWrite = new FileWriter("message.dd");
+            ddWrite.write(sha256Value);
+            ddWrite.close();
 
-            try{
-                FileWriter ddWrite = new FileWriter("message.dd");
-                ddWrite.write(sha256Value);
-                ddWrite.close();
+            System.out.println("File write successful.");
 
-                System.out.println("File write successful.");
+        } catch (Exception e){
 
-            } catch (Exception e){
-
-                System.err.println("Error. File does not exist.");
-                e.printStackTrace();
-            }
+            System.err.println("Error. File does not exist.");
+            e.printStackTrace();
+        }
 
 
-            // since this is asking for a path and file name, this WILL vary
-            // this also assumes M is a text file, so watch out
-            // 1 ascii char = 1 byte, make each part a small multiple of 1024 bytes
-            // I think this should be a Char array also
+        // since this is asking for a path and file name, this WILL vary
+        // this also assumes M is a text file, so watch out
+        // 1 ascii char = 1 byte, make each part a small multiple of 1024 bytes
+        // I think this should be a Char array also
+
 
 
         System.out.println("Do you want to invert the 1st byte in SHA256(M)? (y or n)");
-        otherInput = scan.nextLine();
+        otherInput = scan.next();
 
 
-        if(otherInput == "y" || otherInput == "Y"){
+        if(otherInput.equals("y") || otherInput.equals("Y")){
 
+            // DO SILLY STUFF HEREEEEEHGEHJKGBFJH
 
             // this should invert first byte
 
-        } else if (otherInput == "n" || otherInput == "N"){
+        } else if (otherInput.equals("n") || otherInput.equals("N")){
+            System.out.println("Continuing.");
+
+            // toHex(sha256Value);
 
         } else {
             System.out.println("Please input either 'y' or 'n'! ");
-            otherInput = scan.nextLine();
+            otherInput = scan.next();
+
         }
         // if yes, invert, else, go on.
         //Calculate RSA of SHA256 with Kx-
@@ -179,7 +166,7 @@ public class Sender {
     static int gcd (){
 
         return 0;
-            // Change that
+        // Change that
     }
 
 }
