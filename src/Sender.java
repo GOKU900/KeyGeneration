@@ -15,9 +15,10 @@ import java.io.*;
 public class Sender {
     private static int BUFFER_SIZE = 32*1024;
 
-    public static void main(String[] args) throws IOException, ClassNotFoundException, NoSuchAlgorithmException, InvalidKeySpecException, NoSuchPaddingException {
+    public static void main(String[] args) throws Exception{
         //get the modulus and exponent from the XPrivate.key file
         //NOTE: when uploading to the class server we are going to need the entire file path
+
         FileInputStream keyFile = new FileInputStream("XPrivate.key");
         ObjectInputStream privateKeyObject = new ObjectInputStream(keyFile);
         BigInteger modulus = (BigInteger) privateKeyObject.readObject();
@@ -49,25 +50,30 @@ public class Sender {
         messageFileString = scan.nextLine();
         String sha256Value = SHA256Convert(messageFileString);
 
+        //System.out.println("THIS IS THE PRINT"+SHA256Convert(messageFileString));
+
         //include the SHA256 value into the message file provided by user
-        FileWriter shaWriter = new FileWriter(messageFileString,true);
+        FileWriter shaWriter = new FileWriter("message.dd",true);
         BufferedWriter bw = new BufferedWriter(shaWriter);
         bw.write(sha256Value);
         bw.close();
+            // This block of code writes to message.dd; also doesn't append to the original text file
+            // Don't tinker too much here unless you put a try/catch block
 
 
-
-        File M = new File(messageFileString);
+        File message = new File(messageFileString);
         //probably need to use BufferedInputStream here
-        Scanner mReader = new Scanner(M);
+        Scanner messageScan = new Scanner(message);
 
-        while (mReader.hasNextLine()){
+        while (messageScan.hasNextLine()){
 
-            String data = mReader.nextLine();
+            String data = messageScan.nextLine();
             System.out.println(data);
 
+            //TURN SHA INTO BYTE HERE
+
             // Not sure if this should be a char or not yet. LAN: I think this is a byte array not a char array
-            // Will have to read piece by piece.
+
         }
 
         try {
@@ -95,12 +101,7 @@ public class Sender {
             System.err.println("Error. File does not exist.");
             e.printStackTrace();
         }
-
-
-        // since this is asking for a path and file name, this WILL vary
-        // this also assumes M is a text file, so watch out
         // 1 ascii char = 1 byte, make each part a small multiple of 1024 bytes
-        // I think this should be a Char array also
 
 
 
@@ -145,7 +146,22 @@ public class Sender {
         md = in.getMessageDigest();
         in.close();
 
-        return new String(md.digest());
+        byte[] hash = md.digest();
+
+        System.out.println("digital digest hash value: ");
+
+        for(int k = 0, j=0; k < hash.length; k++, j++){
+            System.out.format("%2X", hash[k]);
+
+            if(j >= 15){
+                System.out.println("");
+                j = 0;
+            }
+        }
+
+        // We might have to put the try/catch block HERE!!!!!!!!
+
+        return new String (hash);
     } // This is used to convert message to SHA256
 
     public static byte[] AESencrypt(byte[] symmetricKey, byte[] messageInput) throws Exception{
@@ -187,6 +203,8 @@ public class Sender {
 
         return hexValue;
     }
+
+
 
 
 }
