@@ -6,6 +6,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
+import java.security.interfaces.RSAPrivateKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPrivateKeySpec;
 import java.util.*;
@@ -147,6 +148,32 @@ public class Sender {
         return new String(md.digest());
     } // This is used to convert message to SHA256
 
+    public static byte[] AESencrypt(byte[] symmetricKey, byte[] messageInput) throws Exception{
+
+        SecretKey key = new SecretKeySpec(symmetricKey, "AES");
+
+        Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding");
+        cipher.init(Cipher.DECRYPT_MODE,key);
+
+        return cipher.doFinal(messageInput);
+    }
+
+    public static byte[] RSAencrypt(String messageInput, BigInteger exponent, BigInteger n) throws Exception{
+
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+
+        RSAPrivateKeySpec rsaPriv = new RSAPrivateKeySpec(n, exponent);
+
+        RSAPrivateKey key = (RSAPrivateKey) keyFactory.generatePrivate(rsaPriv);
+
+        Cipher cipher = Cipher.getInstance("RSA/ECB/NoPadding");
+
+        cipher.init(Cipher.ENCRYPT_MODE, key);
+
+
+        return cipher.doFinal(messageInput.getBytes());
+    }
+
     public static byte[] hexToByte(String hexString){
 
         byte [] hexValue = new byte[hexString.length() /2];
@@ -161,10 +188,5 @@ public class Sender {
         return hexValue;
     }
 
-    static int gcd (){
-
-        return 0;
-        // Change that
-    }
 
 }
