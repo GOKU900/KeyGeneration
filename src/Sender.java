@@ -49,14 +49,13 @@ public class Sender {
         System.out.print("Input the name of the message file: ");
         messageFileString = scan.nextLine();
         String sha256Value = SHA256Convert(messageFileString);
-
-        //System.out.println("THIS IS THE PRINT"+SHA256Convert(messageFileString));
+            // Effectively converts text to SHA256
 
         //include the SHA256 value into the message file provided by user
-        FileWriter shaWriter = new FileWriter("message.dd",true);
-        BufferedWriter bw = new BufferedWriter(shaWriter);
-        bw.write(sha256Value);
-        bw.close();
+        FileWriter messageDigestWriter = new FileWriter("message.dd",true);
+        BufferedWriter digestBw = new BufferedWriter(messageDigestWriter);
+        digestBw.write(sha256Value);
+        digestBw.close();
             // This block of code writes to message.dd; also doesn't append to the original text file
             // Don't tinker too much here unless you put a try/catch block
 
@@ -65,14 +64,12 @@ public class Sender {
         //probably need to use BufferedInputStream here
         Scanner messageScan = new Scanner(message);
 
+        System.out.println("\n\nOriginal Text: ");
+
         while (messageScan.hasNextLine()){
 
             String data = messageScan.nextLine();
             System.out.println(data);
-
-            //TURN SHA INTO BYTE HERE
-
-            // Not sure if this should be a char or not yet. LAN: I think this is a byte array not a char array
 
         }
 
