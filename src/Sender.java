@@ -5,6 +5,7 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
+import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPrivateKeySpec;
 import java.util.*;
 import java.io.*;
@@ -14,29 +15,12 @@ public class Sender {
     static String IV = "AAAAAAAAAAAAAAAA";
 
     public static void main(String[] args) throws Exception {
-        //get the modulus and exponent from the XPrivate.key file
-        //NOTE: when uploading to the class server we are going to need the entire file path
-        FileInputStream keyFile = new FileInputStream("XPrivate.key");
-        ObjectInputStream privateKeyObject = new ObjectInputStream(keyFile);
-        BigInteger modulus = (BigInteger) privateKeyObject.readObject();
-        BigInteger exponent = (BigInteger) privateKeyObject.readObject();
-        privateKeyObject.close();
-
-        //Create the private key spec
-        RSAPrivateKeySpec privateSpec = new RSAPrivateKeySpec(modulus,exponent);
-
-        //create a key factory
-        KeyFactory factory = KeyFactory.getInstance("RSA");
-
-        //create the RSA private key
-        PrivateKey privateKeyX = factory.generatePrivate(privateSpec);
-
-        //create a symmetric key from symmetric.key file for AES algorithm
-        File symmetricKeyFile = new File("symmetric.key");
-        Scanner sc = new Scanner(symmetricKeyFile);
+        PrivateKey privateKeyX = createPrivateKeyX("XPrivate.key");
+        //SecretKeySpec symmetricKey = createSecretKey("symmetric.key");
+        FileInputStream keyFile = new FileInputStream("symmetric.key");
+        Scanner sc = new Scanner(keyFile);
         String sKey = sc.nextLine();
-        byte[] byteKey = new byte[128];
-        SecretKey secretKey = new SecretKeySpec(sKey.getBytes(StandardCharsets.UTF_8), "AES");
+        //byte[] byteKey = new byte[128];
 
         Scanner scan = new Scanner(System.in);
         String messageFileString;
@@ -120,15 +104,15 @@ public class Sender {
         FileInputStream shaMessageFile = new FileInputStream("message.dd");
         BufferedInputStream buffSha = new BufferedInputStream(shaMessageFile);
         //int numOfByes = buffSha.available();
-        byte[] shaBytes = new byte[32];
-        shaBytes = buffSha.readAllBytes();
+        byte[] shaBytes = buffSha.readAllBytes();
+        //shaBytes = buffSha.readAllBytes();
         FileOutputStream encryptedSHAFile = new FileOutputStream("message.ds-msg");
         encryptedSHAFile.write(RSAencrypt(shaBytes,privateKeyX));
         FileInputStream readEncrypted = new FileInputStream("message.ds-msg");
         BufferedInputStream newBuff = new BufferedInputStream(readEncrypted);
         byte[] newEncryptedSHA = new byte[128];
         newBuff.read(newEncryptedSHA,0,newEncryptedSHA.length);
-        System.out.println("Encrypted SHA with RSA (128 bytes): ");
+        System.out.println("Encrypted SHA256 with RSA (128 bytes): ");
 
         for(int k = 0, j=0; k < newEncryptedSHA.length; k++, j++){
             System.out.format("%2X ", newEncryptedSHA[k]);
@@ -156,12 +140,12 @@ public class Sender {
         int bytesInStream;
         while((bytesInStream = digestNM.read(pieces))!=-1){
             if(bytesInStream==64){
-                encryptedDigestNM.write(AESencrypt(pieces,secretKey));
+                encryptedDigestNM.write(AESencrypt(pieces,sKey));
             }
             if(bytesInStream<64 && bytesInStream>0) {
                 byte[] newByte = new byte[bytesInStream];
                 newByte = digestNM.readAllBytes();
-                encryptedDigestNM.write(AESencrypt(newByte,secretKey));
+                encryptedDigestNM.write(AESencrypt(newByte,sKey));
 
             }
         }
@@ -197,20 +181,49 @@ public class Sender {
         return new String (hash);
     } // This is used to convert message to SHA256
 
-    public static byte[] AESencrypt(byte[] messageInput,SecretKey key) throws Exception{
+    public static byte[] AESencrypt(byte[] messageInput,String key1) throws Exception{
         //SecretKey key = new SecretKeySpec(symmetricKey, "AES");
         Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
+        SecretKeySpec key = new SecretKeySpec(key1.getBytes(StandardCharsets.UTF_8),"AES");
         cipher.init(Cipher.ENCRYPT_MODE,key,new IvParameterSpec(IV.getBytes(StandardCharsets.UTF_8)));
-
         return cipher.doFinal(messageInput);
     }
 
     public static byte[] RSAencrypt(byte[] messageInput,PrivateKey privateKeyX) throws Exception{
-        Cipher cipher = Cipher.getInstance("RSA/ECB/NoPadding");
-
-        cipher.init(Cipher.ENCRYPT_MODE, privateKeyX);
-
+        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+        SecureRandom random = new SecureRandom();
+        cipher.init(Cipher.ENCRYPT_MODE, privateKeyX,random);
         return cipher.doFinal(messageInput);
+    }
+
+    public static PrivateKey createPrivateKeyX(String filename) throws IOException, ClassNotFoundException, NoSuchAlgorithmException, InvalidKeySpecException {
+        //get the modulus and exponent from the XPrivate.key file
+        //NOTE: when uploading to the class server we are going to need the entire file path
+        FileInputStream keyFile = new FileInputStream(filename);
+        ObjectInputStream privateKeyObject = new ObjectInputStream(keyFile);
+        BigInteger modulus = (BigInteger) privateKeyObject.readObject();
+        BigInteger exponent = (BigInteger) privateKeyObject.readObject();
+        privateKeyObject.close();
+
+        //Create the private key spec
+        RSAPrivateKeySpec privateSpec = new RSAPrivateKeySpec(modulus,exponent);
+
+        //create a key factory
+        KeyFactory factory = KeyFactory.getInstance("RSA");
+
+        //create the RSA private key
+        PrivateKey privateKeyX = factory.generatePrivate(privateSpec);
+        return privateKeyX;
+    }
+
+    public static SecretKeySpec createSecretKey(String filename) throws FileNotFoundException {
+        //create a symmetric key from symmetric.key file for AES algorithm
+        File symmetricKeyFile = new File(filename);
+        Scanner sc = new Scanner(symmetricKeyFile);
+        String sKey = sc.nextLine();
+        byte[] byteKey = new byte[128];
+        SecretKeySpec secretKey = new SecretKeySpec(sKey.getBytes(StandardCharsets.UTF_8), "AES");
+        return secretKey;
     }
 
     public static byte[] hexToByte(String hexString){

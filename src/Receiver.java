@@ -1,6 +1,8 @@
 import java.io.*;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.RSAPrivateKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.*;
 import java.security.*;
@@ -13,11 +15,11 @@ public class Receiver {
     static String IV = "AAAAAAAAAAAAAAAA";
     public static void main(String[] args) throws Exception {
         //create a symmetric key from symmetric.key file for AES algorithm
-        File symmetricKeyFile = new File("symmetric.key");
-        Scanner sc = new Scanner(symmetricKeyFile);
+        //SecretKeySpec symmetricKey = createSecretKey("symmetric.key");
+        PublicKey publicKeyX = createPublicKeyX("XPublic.key");
+        FileInputStream keyFile = new FileInputStream("symmetric.key");
+        Scanner sc = new Scanner(keyFile);
         String sKey = sc.nextLine();
-        byte[] byteKey = new byte[128];
-        SecretKey secretKey = new SecretKeySpec(sKey.getBytes(StandardCharsets.UTF_8), "AES");
 
         Scanner scan = new Scanner(System.in);
         String fileName;
@@ -30,7 +32,9 @@ public class Receiver {
         FileOutputStream decryptedAES = new FileOutputStream("message.ds-msg2");
         byte[] availableInBuff = new byte[encryptedBuff.available()];
         encryptedBuff.read(availableInBuff);
-        decryptedAES.write(AESdecrypt(availableInBuff,secretKey));
+        encryptedBuff.close();
+        decryptedAES.write(AESdecrypt(availableInBuff,sKey));
+        decryptedAES.close();
         //byte[] pieces = new byte[64];
 /*        int bytesInStream;
         while ((bytesInStream = cipherText.read(pieces)) != -1) {
@@ -46,21 +50,25 @@ public class Receiver {
             }
         }*/
 
-
+        // Read first 128 bytes from message.ds-msg for digital signature and copy message M
         byte[] shaDecrypted = new byte[128];
         FileInputStream decryptedFile = new FileInputStream("message.ds-msg");
         BufferedInputStream newBuff = new BufferedInputStream(decryptedFile);
         newBuff.read(shaDecrypted,0,shaDecrypted.length);
-        FileOutputStream newOut = new FileOutputStream(fileName,true);
-        newOut.write(shaDecrypted);
-        newOut.write(newBuff.readAllBytes());
-        // Read first 128 bytes from message.ds-msg for digital signature and copy message M
+        FileOutputStream newOut = new FileOutputStream("message.ds-msg",true);
+        //newOut.write(newBuff.readAllBytes());
+        //read M from message.ds-msg
+        BufferedInputStream getM = new BufferedInputStream(new FileInputStream("message.ds-msg"));
+        byte[] messageM = new byte[getM.available()-128];
+        getM.skip(128);
+        getM.read(messageM);
+        newOut.write(messageM);
 
         //Calculate RSA decryption using Kx+ and save into file named message.dd and output into console in hexadecimal
         FileOutputStream decryptRSAForSha = new FileOutputStream("message.dd");
-        String decryptedSHA = RSAdecrypt(shaDecrypted);
+        String decryptedSHA = RSAdecrypt(shaDecrypted,publicKeyX);
         decryptRSAForSha.write(decryptedSHA.getBytes(StandardCharsets.UTF_8));
-        System.out.println("Decrypted SHA256 in hex: ");
+        System.out.println("Decrypted SHA256 in hex (from message.dd): ");
 
         for(int k = 0, j=0; k < shaDecrypted.length; k++, j++){
             System.out.format("%2X ", shaDecrypted[k]);
@@ -75,7 +83,7 @@ public class Receiver {
         String sha256Value = SHA256Convert(fileName);
         byte[] sha256B = new byte[sha256Value.length()];
         sha256B = sha256Value.getBytes(StandardCharsets.UTF_8);
-        System.out.println("Decrypted SHA256 for entire message in hex: ");
+        System.out.println("\n\nDecrypted SHA256 for entire message in hex: ");
 
         for(int k = 0, j=0; k < sha256B.length; k++, j++){
             System.out.format("%2X ", sha256B[k]);
@@ -88,31 +96,17 @@ public class Receiver {
         // Compare with SHA256 digital digest; return if true or not
 
     }
-    public static byte[] AESdecrypt (byte[] message,SecretKey key) throws Exception {
+    public static byte[] AESdecrypt (byte[] message,String key1) throws Exception {
         Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
+        SecretKeySpec key = new SecretKeySpec(key1.getBytes(StandardCharsets.UTF_8),"AES");
         cipher.init(cipher.DECRYPT_MODE, key,new IvParameterSpec(IV.getBytes("UTF-8")));
         byte[] decrypted = cipher.doFinal(message);
         return decrypted;
     }
 
-    public static String RSAdecrypt (byte[] message) throws Exception {
-        FileInputStream keyFile = new FileInputStream("XPublic.key");
-        ObjectInputStream publicKeyObject = new ObjectInputStream(keyFile);
-        BigInteger modulus = (BigInteger) publicKeyObject.readObject();
-        BigInteger exponent = (BigInteger) publicKeyObject.readObject();
-        publicKeyObject.close();
-
-        //Create the public key spec
-        RSAPublicKeySpec publicSpec = new RSAPublicKeySpec(modulus, exponent);
-
-        //create a key factory
-        KeyFactory factory = KeyFactory.getInstance("RSA");
-
-        //create the RSA public key
-        PublicKey publicKeyX = factory.generatePublic(publicSpec);
-
-        Cipher cipher = Cipher.getInstance("RSA/ECB/NoPadding");
-        cipher.init(Cipher.DECRYPT_MODE, publicKeyX);
+    public static String RSAdecrypt (byte[] message, PublicKey keyX) throws Exception {
+        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+        cipher.init(Cipher.DECRYPT_MODE,keyX);
         //byte plaintext = cipher.
         return new String(cipher.doFinal(message));
     }
@@ -130,7 +124,7 @@ public class Receiver {
 
         byte[] hash = md.digest();
 
-        System.out.println("/n digital digest hash value: ");
+        System.out.println("\n\ndigital digest hash value: ");
 
         for(int k = 0, j=0; k < hash.length; k++, j++){
             System.out.format("%2X ", hash[k]);
@@ -146,6 +140,35 @@ public class Receiver {
         return new String (hash);
     } // This is used to convert message to SHA256
 
+    public static SecretKeySpec createSecretKey(String filename) throws FileNotFoundException {
+        //create a symmetric key from symmetric.key file for AES algorithm
+        File symmetricKeyFile = new File(filename);
+        Scanner sc = new Scanner(symmetricKeyFile);
+        String sKey = sc.nextLine();
+        byte[] byteKey = new byte[128];
+        SecretKeySpec secretKey = new SecretKeySpec(sKey.getBytes(StandardCharsets.UTF_8), "AES");
+        return secretKey;
+    }
+
+    public static PublicKey createPublicKeyX(String filename) throws IOException, ClassNotFoundException, NoSuchAlgorithmException, InvalidKeySpecException {
+        //get the modulus and exponent from the XPrivate.key file
+        //NOTE: when uploading to the class server we are going to need the entire file path
+        FileInputStream keyFile = new FileInputStream(filename);
+        ObjectInputStream publicKeyObject = new ObjectInputStream(keyFile);
+        BigInteger modulus = (BigInteger) publicKeyObject.readObject();
+        BigInteger exponent = (BigInteger) publicKeyObject.readObject();
+        publicKeyObject.close();
+
+        //Create the private key spec
+        RSAPublicKeySpec publicSpec = new RSAPublicKeySpec(modulus,exponent);
+
+        //create a key factory
+        KeyFactory factory = KeyFactory.getInstance("RSA");
+
+        //create the RSA private key
+        PublicKey publicKeyX = factory.generatePublic(publicSpec);
+        return publicKeyX;
+    }
 
     public static byte[] hexToByte (String hexString){
         byte[] val = new byte[hexString.length() / 2];
